@@ -44,6 +44,7 @@ coreOffer, valueProposition, targetAudienceSignals, offerCategory, funnelType, u
   `;
 
   return withRetry(async () => {
+    console.log(`[Client] Fetching /api/extract-offer for: ${url}`);
     const response = await fetch('/api/extract-offer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -52,7 +53,8 @@ coreOffer, valueProposition, targetAudienceSignals, offerCategory, funnelType, u
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to extract offer');
+      console.error(`[Client Error] Status: ${response.status}`, errorData);
+      throw new Error(errorData.error || `Server error (${response.status})`);
     }
 
     return await response.json();
@@ -84,6 +86,7 @@ Return the output EXACTLY matching the requested JSON structure.
   `;
 
   return withRetry(async () => {
+    console.log(`[Client] Fetching /api/generate-strategy`);
     const response = await fetch('/api/generate-strategy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -92,7 +95,8 @@ Return the output EXACTLY matching the requested JSON structure.
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to generate strategy');
+      console.error(`[Client Error] Status: ${response.status}`, errorData);
+      throw new Error(errorData.error || `Server error (${response.status})`);
     }
 
     return await response.json();

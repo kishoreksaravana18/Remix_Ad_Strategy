@@ -24,8 +24,13 @@ async function startServer() {
   };
 
   // API Routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", message: "Server is alive and well." });
+  });
+
   app.post("/api/extract-offer", async (req, res) => {
     const { url, prompt } = req.body;
+    console.log(`[Server] Extracting offer for: ${url}`);
     try {
       const openai = getAiClient();
       const response = await openai.chat.completions.create({
@@ -36,9 +41,10 @@ async function startServer() {
         ],
         response_format: { type: "json_object" }
       });
+      console.log(`[Server] Successfully extracted offer.`);
       res.json(JSON.parse(response.choices[0].message.content || "{}"));
     } catch (error: any) {
-      console.error("Extract Offer Error:", error);
+      console.error("[Server Error] Extract Offer:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
