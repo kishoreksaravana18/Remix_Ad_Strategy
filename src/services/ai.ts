@@ -37,7 +37,7 @@ Based on your knowledge or the context of this URL, extract the following detail
 4. Offer category (SaaS / ecomm / lead gen / local service / info product)
 5. Funnel type (cold traffic / warm retargeting / branded)
 6. Unique mechanism (what makes this offer different)
-7. Page speed & technical heuristics (perceived performance bottlenecks)
+7. Page speed & technical heuristics (perceived performance bottlenecks) - RETURN AS A DESCRIPTIVE STRING.
 
 Return the output as a valid JSON object with the following keys:
 coreOffer, valueProposition, targetAudienceSignals, offerCategory, funnelType, uniqueMechanism, pageSpeedHeuristics.
@@ -73,16 +73,47 @@ ${JSON.stringify(offerDetails, null, 2)}
 
 INSTRUCTIONS:
 1. PHASE 2: COMPETITIVE INTELLIGENCE
-   - Identify ACTUAL competitors running ads for similar keywords.
+   - Identify 3 ACTUAL competitors.
    - For each competitor, identify their REAL positioning and the gap we can exploit.
 
 2. PHASE 3: STRATEGY ENGINE
    - All strategies (audiences, keywords, copy) MUST be directly derived from the 'STRICT GROUNDING DATA' above.
    - Audiences: Be specific to the target audience signals identified.
-   - Keywords: Focus on high-intent terms related to the core offer and unique mechanism.
-   - Ad Copy: Infuse the requested tone (${adCopyAngle}) while strictly adhering to the value proposition and unique mechanism.
+   - Keywords: Focus on high-intent terms.
+   - Ad Copy: Infuse the requested tone (${adCopyAngle}).
 
-Return the output EXACTLY matching the requested JSON structure.
+Return the output as a valid JSON object matching this EXACT structure:
+{
+  "kpis": {
+    "competitorsCount": number,
+    "keywordsCount": number,
+    "segmentsCount": number,
+    "copyVariantsCount": number
+  },
+  "offerAnalysis": {
+    "valueProp": "string",
+    "gaps": ["string"],
+    "audienceTags": ["string"]
+  },
+  "competitors": [
+    { "name": "string", "url": "string", "strength": number (1-100), "exploitableGap": "string" }
+  ],
+  "audiences": [
+    { "name": "string", "type": "string", "bidModifier": "string", "funnelStage": "string", "rationale": "string" }
+  ],
+  "keywords": [
+    { "clusterName": "string", "exact": ["string"], "phrase": ["string"], "negative": ["string"] }
+  ],
+  "adCopy": [
+    { "angle": "string", "headlines": ["string"], "descriptions": ["string"] }
+  ],
+  "strategy": {
+    "timeline": [{ "week": number, "action": "string" }],
+    "deviceBids": { "mobile": number, "desktop": number, "tablet": number },
+    "geoPriority": "string",
+    "losersVsEdge": { "losers": "string", "edge": "string" }
+  }
+}
   `;
 
   return withRetry(async () => {
