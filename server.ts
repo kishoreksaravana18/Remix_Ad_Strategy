@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 async function startServer() {
+  console.log("[Server] Starting server...");
   const app = express();
   const PORT = 3000;
 
@@ -39,7 +40,8 @@ async function startServer() {
           { role: "system", content: "You are a highly accurate direct response marketing analyst. Return ONLY valid JSON." },
           { role: "user", content: prompt }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        max_tokens: 4096
       });
       console.log(`[Server] Successfully extracted offer.`);
       res.json(JSON.parse(response.choices[0].message.content || "{}"));
@@ -59,7 +61,8 @@ async function startServer() {
           { role: "system", content: "You are a world-class Google Ads strategist. Return ONLY valid JSON." },
           { role: "user", content: prompt }
         ],
-        response_format: { type: "json_object" }
+        response_format: { type: "json_object" },
+        max_tokens: 4096
       });
       res.json(JSON.parse(response.choices[0].message.content || "{}"));
     } catch (error: any) {
