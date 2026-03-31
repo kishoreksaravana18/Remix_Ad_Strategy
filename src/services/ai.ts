@@ -1,47 +1,20 @@
-/// <reference types="vite/client" />
-import OpenAI from "openai";
 import { OfferDetails, StrategyReport, CampaignType } from "../types";
 
-// Using environment variable for API key (supports Netlify and AI Studio preview)
-const getApiKey = () => import.meta.env.VITE_NVIDIA_API_KEY || process.env.NVIDIA_API_KEY;
-
-let aiInstance: OpenAI | null = null;
-
-function getAiClient(): OpenAI {
-  if (!aiInstance) {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new Error("An NVIDIA API Key must be set. Please set VITE_NVIDIA_API_KEY in your environment variables.");
-    }
-    aiInstance = new OpenAI({
-      apiKey: apiKey,
-      baseURL: "https://integrate.api.nvidia.com/v1",
-      dangerouslyAllowBrowser: true
-    });
-  }
-  return aiInstance;
-}
+/**
+ * Service to handle AI interactions via backend proxy.
+ */
 
 // Helper function to retry API calls with exponential backoff
 async function withRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
   let attempt = 0;
   while (true) {
     try {
-      // Add a timeout to the operation call (60 seconds)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Request timed out after 60 seconds")), 60000)
-      );
-      return await Promise.race([operation(), timeoutPromise]) as T;
+      return await operation();
     } catch (error: any) {
-      const isRateLimit = error.status === 429 || 
-                          error.message?.includes('quota') || 
-                          error.message?.includes('RESOURCE_EXHAUSTED');
-      
-      if (isRateLimit && attempt < maxRetries) {
+      if (attempt < maxRetries) {
         attempt++;
-        // Exponential backoff: 2s, 4s, 8s + random jitter to prevent thundering herd
         const delay = (Math.pow(2, attempt) * 1000) + (Math.random() * 1000);
-        console.warn(`[API Rate Limit] Retrying in ${Math.round(delay/1000)}s... (Attempt ${attempt} of ${maxRetries})`);
+        console.warn(`[API Error] Retrying in ${Math.round(delay/1000)}s... (Attempt ${attempt} of ${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } else {
         throw error;
@@ -70,27 +43,20 @@ Return the output as a valid JSON object with the following keys:
 coreOffer, valueProposition, targetAudienceSignals, offerCategory, funnelType, uniqueMechanism, pageSpeedHeuristics.
   `;
 
-  try {
-    const response = await withRetry(() => getAiClient().chat.completions.create({
-      model: "meta/llama-3.1-405b-instruct",
-      messages: [
-        { role: "system", content: "You are a highly accurate direct response marketing analyst. You prioritize factual accuracy above all else. Return ONLY valid JSON." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    }));
+  return withRetry(async () => {
+    const response = await fetch('/api/extract-offer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, prompt })
+    });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("Failed to extract offer details.");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to extract offer');
     }
 
-    console.log(`[Phase 1] Successfully extracted offer DNA.`);
-    return JSON.parse(content) as OfferDetails;
-  } catch (error: any) {
-    console.error(`[Phase 1 Error] ${error.message}`);
-    throw error;
-  }
+    return await response.json();
+  });
 }
 
 export async function generateStrategyReport(url: string, offerDetails: OfferDetails, campaignType: CampaignType, adCopyAngle: string = 'Standard'): Promise<StrategyReport> {
@@ -117,25 +83,18 @@ INSTRUCTIONS:
 Return the output EXACTLY matching the requested JSON structure.
   `;
 
-  try {
-    const response = await withRetry(() => getAiClient().chat.completions.create({
-      model: "meta/llama-3.1-405b-instruct",
-      messages: [
-        { role: "system", content: "You are a world-class Google Ads strategist. You use provided grounding data as the absolute source of truth. Return ONLY valid JSON." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" }
-    }));
+  return withRetry(async () => {
+    const response = await fetch('/api/generate-strategy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt })
+    });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("Failed to generate strategy report.");
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to generate strategy');
     }
 
-    console.log(`[Phase 2-4] Successfully generated strategy report.`);
-    return JSON.parse(content) as StrategyReport;
-  } catch (error: any) {
-    console.error(`[Phase 2-4 Error] ${error.message}`);
-    throw error;
-  }
+    return await response.json();
+  });
 }
