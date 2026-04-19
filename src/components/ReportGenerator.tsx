@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { extractOffer, generateStrategyReport } from '../services/ai';
 import { OfferDetails, StrategyReport, CampaignType, AdCopyAngle } from '../types';
 import { Loader2, Search, ArrowRight, CheckCircle2, Activity, Zap, MessageSquare } from 'lucide-react';
@@ -18,6 +18,27 @@ export default function ReportGenerator() {
   const [offerDetails, setOfferDetails] = useState<OfferDetails | null>(null);
   const [reportData, setReportData] = useState<StrategyReport | null>(null);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (step === 'extracting') {
+      setProgress(0);
+      interval = setInterval(() => {
+        setProgress(p => (p < 30 ? p + 1 : p));
+      }, 200); // 30 steps * 200ms = 6 seconds to reach 30%
+    } else if (step === 'generating') {
+      setProgress(30);
+      interval = setInterval(() => {
+        setProgress(p => (p < 95 ? p + 1 : p));
+      }, 400); // 65 steps * 400ms = 26 seconds to reach 95%
+    } else if (step === 'complete') {
+      setProgress(100);
+    } else if (step === 'idle' || step === 'error') {
+      setProgress(0);
+    }
+    return () => clearInterval(interval);
+  }, [step]);
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,52 +168,53 @@ export default function ReportGenerator() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="max-w-3xl mx-auto w-full"
+              className="max-w-3xl mx-auto w-full flex flex-col items-center justify-center"
             >
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-6">
-                <div className="flex items-center gap-4">
-                  {step === 'extracting' ? (
-                    <div className="relative flex items-center justify-center w-8 h-8">
-                      <div className="absolute inset-0 border-2 border-emerald-500/30 rounded-full animate-ping" />
-                      <Loader2 className="w-5 h-5 text-emerald-400 animate-spin relative z-10" />
-                    </div>
-                  ) : step === 'generating' || step === 'complete' ? (
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 rounded-full border-2 border-zinc-800 flex items-center justify-center" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className={`font-medium ${step === 'extracting' ? 'text-white' : 'text-zinc-400'}`}>
-                      Phase 1: Offer Extraction & Technical Analysis
+              {!error && (step === 'extracting' || step === 'generating') && (
+                <div className="flex flex-col items-center justify-center space-y-6 py-8">
+                  <div 
+                    className="relative w-80 h-80 mix-blend-screen flex items-center justify-center"
+                    style={{
+                      WebkitMaskImage: 'radial-gradient(circle, black 40%, transparent 70%)',
+                      maskImage: 'radial-gradient(circle, black 40%, transparent 70%)'
+                    }}
+                  >
+                    <img 
+                      src="https://cdn.dribbble.com/userupload/42153336/file/original-47d79aeef2b6c2f3d94914d2ecfda559.gif" 
+                      alt="Processing..." 
+                      className="w-full h-full object-cover scale-110"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                    <h3 className="text-lg font-medium text-white">
+                      {step === 'extracting' ? 'Phase 1: Offer Extraction & Analysis' : 'Phase 2-4: Strategy Generation'}
                     </h3>
-                    <p className="text-sm text-zinc-500 font-mono mt-1">Analyzing DOM, page speed heuristics, and offer DNA...</p>
+                    <p className="text-sm text-emerald-400 font-mono animate-pulse">
+                      {step === 'extracting' ? 'Analyzing DOM and offer DNA...' : 'Building competitive intel & ad copy...'}
+                    </p>
+                    
+                    {/* Progress Bar */}
+                    <div className="w-full mt-4 space-y-2">
+                      <div className="flex justify-between text-xs font-mono text-zinc-400">
+                        <span>Progress</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-emerald-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress}%` }}
+                          transition={{ ease: "linear", duration: 0.5 }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="flex items-center gap-4">
-                  {step === 'generating' ? (
-                    <div className="relative flex items-center justify-center w-8 h-8">
-                      <div className="absolute inset-0 border-2 border-blue-500/30 rounded-full animate-ping" />
-                      <Loader2 className="w-5 h-5 text-blue-400 animate-spin relative z-10" />
-                    </div>
-                  ) : step === 'complete' ? (
-                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    </div>
-                  ) : (
-                    <div className="w-8 h-8 rounded-full border-2 border-zinc-800 flex items-center justify-center" />
-                  )}
-                  <div className="flex-1">
-                    <h3 className={`font-medium ${step === 'generating' ? 'text-white' : 'text-zinc-400'}`}>
-                      Phase 2-4: Strategy Generation
-                    </h3>
-                    <p className="text-sm text-zinc-500 font-mono mt-1">Building competitive intel, keywords, and ad copy matrix...</p>
-                  </div>
-                </div>
-
-                {error && (
+              {error && (
+                <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 shadow-xl backdrop-blur-sm mt-6">
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -201,8 +223,8 @@ export default function ReportGenerator() {
                     <Activity className="w-5 h-5 shrink-0 mt-0.5" />
                     <span>{error}</span>
                   </motion.div>
-                )}
-              </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
